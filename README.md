@@ -1,3 +1,29 @@
+# TBV Radar SLAM (maritime fork)
+
+This fork adapts TBV Radar SLAM to a marine X-band radar (Furuno DRS4D-NXT, 2.45 s per revolution, 5.4 m range cells)
+for the KiRaDa dataset recorded in and around Kiel. Data conversion, run scripts, parameters and evaluation are in
+[CAPTNSLAM](https://github.com/CAPTN-sh/CAPTNSLAM), folder `src/TBV`.
+
+Changes to upstream (branch `maritime`). All new options default to the upstream behaviour.
+
+| Option | Programs | Purpose |
+|---|---|---|
+| `--dataset kirada` | all | Polar image layout as for Oxford (rows = azimuth) |
+| `--intensity_offset` | all | Noise level subtracted before intensity weighting (was hard-coded to 60) |
+| `--scan_period`, `--vel_limit`, `--acc_limit` | `odometry_training_node` | Motion sanity check (was hard-coded to 4 Hz, 200 m/s, 200 m/s²) |
+| `--yaw_rate_limit`, `--yaw_acc_limit` | `odometry_training_node` | Additional yaw checks in the sanity check |
+| `--yaw_search`, `--yaw_search_step` | `odometry_training_node` | Coarse yaw search around the initial guess before registration |
+| `--coarse_radius_factor` | `odometry_training_node` | Association radius of the first registration iteration (was 2 × res) |
+| `--use_guess` | `odometry_training_node` | Constant velocity initial guess (was always on) |
+| `--sc_exclude_recent` | `tbv_slam_offline`, `tbv_slam_online` | Distance travelled before a scan can be a loop candidate (was 10 m) |
+
+Fixes: `--odom_sigma_error` now also reaches the Scan Context odometry bounds (they always used 0.05), and a scan
+without surface points no longer crashes the registration.
+
+The original README follows.
+
+---
+
 # TBV Radar SLAM
 This page contains the source code and evaluation for the article [**TBV Radar SLAM**](https://arxiv.org/abs/2301.04397),  published in [**RA-L**](https://ieeexplore.ieee.org/document/10103570) and presented at [**IROS2023**](https://www.youtube.com/watch?v=3n-40a-WZ8A). A [__Demo__](https://www.youtube.com/watch?v=t8HQtHAUHHc) of TBV is provided. This work integrates [__CFEAR radar odometry__](https://github.com/dan11003/CFEAR_Radarodometry) (published in T-RO) with [__introspective loop closure__](https://www.sciencedirect.com/science/article/pii/S0921889022000768) for robust loop closure and mapping of large-scale environments.
 
