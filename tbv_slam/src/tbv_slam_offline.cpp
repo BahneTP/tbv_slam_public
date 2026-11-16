@@ -69,6 +69,7 @@ void ReadOptions(const int argc, char**argv, eval_parameters& eval_par, PoseGrap
   desc.add_options()
       ("help,h", "Help screen")
       ("visualize", po::value<bool>()->default_value(false),"visualize")
+      ("intensity_offset", po::value<double>()->default_value(60.0), "noise level subtracted before intensity weighting")
       ("miniloop-enabled", po::value<bool>()->default_value(false),"short distance miniloop closure")
       ("wait_for_key", po::value<bool>()->default_value(false),"wait for keypress")
       ("input_directory", po::value<std::string>()->default_value(""), "directory of odometry sequences")
@@ -83,6 +84,7 @@ void ReadOptions(const int argc, char**argv, eval_parameters& eval_par, PoseGrap
       ("PC_NUM_RING", po::value<int>()->default_value(40), "PC_NUM_RING")
       ("PC_NUM_SECTOR", po::value<int>()->default_value(120), "PC_NUM_SECTORS")
       ("PC_MAX_RADIUS", po::value<double>()->default_value(80), "PC_MAX_RADIUS")
+      ("sc_exclude_recent", po::value<double>()->default_value(10.0), "distance travelled [m] before a scan can be a loop candidate")
       ("no_point", po::value<double>()->default_value(0.0), "value in descriptor for NO_POINT")
       ("desc_function", po::value<std::string>()->default_value("sum"), "descriptor generation function")
       ("desc_divider", po::value<double>()->default_value(1000.0), "descriptor divider value")
@@ -120,6 +122,7 @@ void ReadOptions(const int argc, char**argv, eval_parameters& eval_par, PoseGrap
   po::variables_map vm;
   store(parse_command_line(argc, argv, desc), vm);
   notify(vm);
+  CFEAR_Radarodometry::MapPointNormal::intensity_offset = vm["intensity_offset"].as<double>();
 
   if (vm.count("help"))
     std::cout << desc << '\n';
@@ -162,6 +165,7 @@ void ReadOptions(const int argc, char**argv, eval_parameters& eval_par, PoseGrap
   slam_pars.loop_pars.DSCCP.rsc_pars.PC_NUM_RING = vm["PC_NUM_RING"].as<int>();
   slam_pars.loop_pars.DSCCP.rsc_pars.PC_NUM_SECTORS = vm["PC_NUM_SECTOR"].as<int>();
   slam_pars.loop_pars.DSCCP.rsc_pars.PC_MAX_RADIUS = vm["PC_MAX_RADIUS"].as<double>();
+  slam_pars.loop_pars.DSCCP.rsc_pars.DISTANCE_EXCLUDE_RECENT = vm["sc_exclude_recent"].as<double>();
   slam_pars.loop_pars.DSCCP.rsc_pars.no_point = vm["no_point"].as<double>();
   slam_pars.loop_pars.DSCCP.rsc_pars.desc_function = vm["desc_function"].as<std::string>();
   slam_pars.loop_pars.DSCCP.rsc_pars.desc_divider = vm["desc_divider"].as<double>();
@@ -170,6 +174,7 @@ void ReadOptions(const int argc, char**argv, eval_parameters& eval_par, PoseGrap
   slam_pars.loop_pars.verify_via_odometry = vm["verify_via_odometry"].as<bool>();
   slam_pars.loop_pars.DSCCP.raw_scan_context = vm["raw_radar_scan"].as<bool>();
   slam_pars.loop_pars.odom_sigma_error = vm["odom_sigma_error"].as<double>();
+  slam_pars.loop_pars.DSCCP.rsc_pars.odom_sigma_error = slam_pars.loop_pars.odom_sigma_error;
   slam_pars.loop_pars.idx_halt = vm["idx_halt"].as<int>();
   slam_pars.loop_pars.dataset_start_offset= vm["dataset_offset"].as<int>();
   slam_pars.loop_pars.verification_disabled = vm["verification_disabled"].as<bool>();

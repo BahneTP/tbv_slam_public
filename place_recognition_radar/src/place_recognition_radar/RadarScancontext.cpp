@@ -19,6 +19,7 @@ RSCManager::RSCManager(const RSCManager::Parameters& pars) : par(pars)
   this->SC_DIST_THRES = par.SC_DIST_THRES;
   this->N_candidates = par.N_CANDIDATES;
   this->PC_MAX_RADIUS = par.PC_MAX_RADIUS;
+  this->DISTANCE_EXCLUDE_RECENT = par.DISTANCE_EXCLUDE_RECENT;
   this->PC_UNIT_SECTORANGLE = 360.0 / double(par.PC_NUM_SECTORS);
   this->PC_UNIT_RINGGAP = par.PC_MAX_RADIUS / double(par.PC_NUM_RING);
 

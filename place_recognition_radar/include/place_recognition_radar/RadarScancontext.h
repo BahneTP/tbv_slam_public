@@ -37,6 +37,7 @@ public:
         int PC_NUM_RING = 40;
         int PC_NUM_SECTORS = 120;
         double PC_MAX_RADIUS = 80;
+        double DISTANCE_EXCLUDE_RECENT = 10.0;
         double SEARCH_RATIO = 0.1;
         int NUM_CANDIDATES_FROM_TREE = 10;
         double SC_DIST_THRES = 0.2;
