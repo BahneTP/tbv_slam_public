@@ -96,6 +96,14 @@ public:
     bool use_keyframe = true, enable_filter = false, use_raw_pointcloud = false;
     double res = 3.5;
     double min_keyframe_dist_ = 1.5, min_keyframe_rot_deg_ = 5;
+    // Motion sanity check; a registration outside these limits is replaced by the initial guess
+    double scan_period = 0.25;                                 // s
+    double vel_limit = 200, acc_limit = 200;                   // m/s, m/s^2
+    double yaw_rate_limit_deg = 1e9, yaw_acc_limit_deg = 1e9;  // deg/s, deg/s^2 (off by default)
+    // Coarse yaw search around the initial guess before registration, for sensors that rotate
+    // further between scans than the association radius covers (0 = off)
+    double yaw_search_deg = 0, yaw_search_step_deg = 1;
+    double coarse_radius_factor = 2;                           // first association radius = factor * res
     std::string loss_type_ = "Huber";
     double loss_limit_ = 0.1;
     double covar_scale_ = 1.0;
@@ -210,7 +218,6 @@ protected:
 
   unsigned int frame_nr_ = 0, nr_callbacks_ = 0;
   double distance_traveled = 0.0;
-  const double Tsensor = 1.0/4.0;
 
 
   Parameters par;
@@ -251,6 +258,8 @@ public:
 private: 
 
   bool AccelerationVelocitySanityCheck(const Eigen::Affine3d& Tmot_prev, const Eigen::Affine3d& Tmot_curr);
+
+  Eigen::Affine3d YawSearch(MapNormalPtr& Pcurrent, const Eigen::Affine3d& Tguess);
 
   bool KeyFrameBasedFuse(const Eigen::Affine3d& diff, bool use_keyframe, double min_keyframe_dist, double min_keyframe_rot_deg);
 

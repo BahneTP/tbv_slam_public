@@ -3,6 +3,7 @@ namespace CFEAR_Radarodometry {
 
 std::map<std::string,ros::Publisher> MapPointNormal::pubs;
 double MapPointNormal::downsample_factor = 1;
+double MapPointNormal::intensity_offset = 60.0;
 
 cell::cell(const pcl::PointCloud<pcl::PointXYZI>::Ptr input, const std::vector<int>& pointIdxNKNSearch, const bool weight_intensity, const Eigen::Vector2d& origin) : Nsamples_(pointIdxNKNSearch.size()) {
   // Compute Covariance
@@ -12,7 +13,7 @@ cell::cell(const pcl::PointCloud<pcl::PointXYZI>::Ptr input, const std::vector<i
 
   for(size_t i=0 ; i<Nsamples_ ; i++){ // build sample and weight block
     x.block<1,2>(i,0) = Eigen::Vector2d(input->points[pointIdxNKNSearch[i]].x, input->points[pointIdxNKNSearch[i]].y);
-    w(i,0) = weight_intensity ? std::max(input->points[pointIdxNKNSearch[i]].intensity-60.0,0.0) : 1.0;
+    w(i,0) = weight_intensity ? std::max(input->points[pointIdxNKNSearch[i]].intensity-MapPointNormal::intensity_offset,0.0) : 1.0;
   }
 
   sum_intensity_ = w.sum();
@@ -83,6 +84,8 @@ MapPointNormal::MapPointNormal(const pcl::PointCloud<pcl::PointXYZI>::Ptr& cld, 
   else
     ComputeNormals(origin);
 
+  if(cells.empty())
+    cerr<<"MapPointNormal: no surface points from "<<input_->size()<<" points (radius "<<radius_<<")"<<endl;
   ComputeSearchTreeFromCells();
   CFEAR_Radarodometry::timing.Document("Surface points",cells.size());
   //cout<<"created normal: input: "<<cld.size()<<" -> "<<cells.size()<<endl;
@@ -158,6 +161,8 @@ void MapPointNormal::ComputeSearchTreeFromCells(){
   }
 
   kd_cells.setSortedResults(true);
+  if(downsampled_->empty())
+    return;
   kd_cells.setInputCloud(downsampled_);
 }
 //Return true if succesfull
@@ -173,7 +178,7 @@ void MapPointNormal::ComputeSearchTreeFromCells(){
   for(int i=0 ; i<Nsamples ; i++){ // build sample and weight block
     x.block<1,2>(i,0) = Eigen::Vector2d(input_->points[pointIdxNKNSearch[i]].x, input_->points[pointIdxNKNSearch[i]].y);
     //w(i,0) = 1.0/x.rows();
-    w(i,0) = std::max(input_->points[pointIdxNKNSearch[i]].intensity-60.0,10.0);
+    w(i,0) = std::max(input_->points[pointIdxNKNSearch[i]].intensity-MapPointNormal::intensity_offset,10.0);
   }
 
   const double w_sum = w.sum();
@@ -237,6 +242,8 @@ bool MapPointNormal:: WeightedCovariance(Eigen::MatrixXd& w, Eigen::MatrixXd& x,
 
 std::vector<int> MapPointNormal::GetClosestIdx(const Eigen::Vector2d&  p, double d){
 
+  if(cells.empty()) // the search tree has no input cloud
+    return std::vector<int>();
   pcl::PointXY pnt;
   pnt.x = p(0);
   pnt.y = p(1);

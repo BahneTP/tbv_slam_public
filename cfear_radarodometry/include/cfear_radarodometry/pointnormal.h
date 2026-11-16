@@ -240,6 +240,8 @@ private:
 
   static double downsample_factor;
 
+  static double intensity_offset; // expected noise level, subtracted before intensity weighting
+
 };
 
 

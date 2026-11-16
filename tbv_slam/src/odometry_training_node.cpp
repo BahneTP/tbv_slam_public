@@ -186,6 +186,16 @@ void ReadOptions(const int argc, char**argv, OdometryKeyframeFuser::Parameters& 
   desc.add_options()
       ("help,h", "Help screen")
       ("res", po::value<double>()->default_value(3.5), "res")
+      ("intensity_offset", po::value<double>()->default_value(60.0), "noise level subtracted before intensity weighting")
+      ("scan_period", po::value<double>()->default_value(0.25), "time between scans [s]")
+      ("vel_limit", po::value<double>()->default_value(200), "max velocity [m/s]")
+      ("acc_limit", po::value<double>()->default_value(200), "max acceleration [m/s^2]")
+      ("yaw_rate_limit", po::value<double>()->default_value(1e9), "max yaw rate [deg/s]")
+      ("yaw_acc_limit", po::value<double>()->default_value(1e9), "max yaw acceleration [deg/s^2]")
+      ("use_guess", po::value<bool>()->default_value(true), "constant velocity initial guess")
+      ("yaw_search", po::value<double>()->default_value(0), "coarse yaw search range [+-deg], 0 = off")
+      ("yaw_search_step", po::value<double>()->default_value(1), "coarse yaw search step [deg]")
+      ("coarse_radius_factor", po::value<double>()->default_value(2), "first association radius / res")
       ("range-res", po::value<double>()->default_value(0.0438), "range resolution")
       ("min_distance", po::value<double>()->default_value(2.5), "min sensor distance")
       ("max_distance", po::value<double>()->default_value(200), "mib sensor distance ")
@@ -232,6 +242,7 @@ void ReadOptions(const int argc, char**argv, OdometryKeyframeFuser::Parameters& 
   po::variables_map vm;
   store(parse_command_line(argc, argv, desc), vm);
   notify(vm);
+  CFEAR_Radarodometry::MapPointNormal::intensity_offset = vm["intensity_offset"].as<double>();
 
   if (vm.count("help"))
     std::cout << desc << '\n';
@@ -331,7 +342,15 @@ void ReadOptions(const int argc, char**argv, OdometryKeyframeFuser::Parameters& 
   par.store_graph = vm["store_graph"].as<bool>();;
   par.weight_intensity_ = vm["weight_intensity"].as<bool>();;
   par.compensate = !vm["disable_compensate"].as<bool>();
-  par.use_guess = true; //vm["soft_constraint"].as<bool>();
+  par.use_guess = vm["use_guess"].as<bool>();
+  par.scan_period = vm["scan_period"].as<double>();
+  par.vel_limit = vm["vel_limit"].as<double>();
+  par.acc_limit = vm["acc_limit"].as<double>();
+  par.yaw_rate_limit_deg = vm["yaw_rate_limit"].as<double>();
+  par.yaw_acc_limit_deg = vm["yaw_acc_limit"].as<double>();
+  par.yaw_search_deg = vm["yaw_search"].as<double>();
+  par.yaw_search_step_deg = vm["yaw_search_step"].as<double>();
+  par.coarse_radius_factor = vm["coarse_radius_factor"].as<double>();
   par.soft_constraint = false; // soft constraint is rarely useful, this is changed for testing of initi // vm["soft_constraint"].as<bool>();
   par.radar_ccw = vm["radar_ccw"].as<bool>();
 

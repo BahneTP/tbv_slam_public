@@ -217,7 +217,7 @@ void n_scan_normal_reg::AddScanPairCost(MapNormalPtr& target_local, MapNormalPtr
   double angle_outlier = std::cos(M_PI/6.0);
   int_pair scan_pair = std::make_pair(scan_idx_tar, scan_idx_src);
   std::unordered_map<size_t,double> stamps;
-  double curr_radius = (itr_ == 1) ? 2*radius_ : radius_; // course to fine strategy
+  double curr_radius = (itr_ == 1) ? coarse_radius_factor_*radius_ : radius_; // course to fine strategy
 
   Eigen::Affine2d Tsrctotar = Ttar.inverse()*Tsrc;    // Associate in global reference frame based normals and center
   //cout<<"tar: "<<scan_idx_tar<<", src: "<<scan_idx_src<<", par: "<<parameters.size()<<endl;

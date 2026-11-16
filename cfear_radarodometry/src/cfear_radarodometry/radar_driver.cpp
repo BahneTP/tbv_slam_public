@@ -28,7 +28,7 @@ radarDriver::radarDriver(const Parameters& pars, bool disable_callback):par(pars
   pub_peaks_ = nh_.advertise<pcl::PointCloud<pcl::PointXYZI>>(par.topic_filtered+"_peaks", 1000);
 
   if(!disable_callback){
-    if(par.dataset=="oxford")
+    if(par.dataset=="oxford" || par.dataset=="kirada")
       sub = nh_.subscribe<sensor_msgs::Image>("/Navtech/Polar", 1000, &radarDriver::CallbackOxford, this);
     else
       sub = nh_.subscribe<sensor_msgs::Image>("/Navtech/Polar", 1000, &radarDriver::Callback, this);
@@ -162,7 +162,7 @@ void radarDriver::Process(){
 
   void radarDriver::CallbackOffline(const sensor_msgs::ImageConstPtr& radar_image_polar,  pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud_peaks){
 
-    if(par.dataset=="oxford")
+    if(par.dataset=="oxford" || par.dataset=="kirada")
       CallbackOxford(radar_image_polar);
     else
       Callback(radar_image_polar);

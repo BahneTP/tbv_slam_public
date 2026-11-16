@@ -71,6 +71,8 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
+  void SetCoarseRadiusFactor(double factor){ coarse_radius_factor_ = factor; }
+
   Registration();
 
   virtual bool Register(std::vector<MapNormalPtr>& scans, std::vector<Eigen::Affine3d>& Tsrc, std::vector<Matrix6d>& reg_cov, bool soft_constraints = false)=0;
@@ -120,6 +122,7 @@ protected:
 
   std::vector<MapNormalPtr> scans_; // 0 = target, 1 = source
   double radius_ = 2.0;
+  double coarse_radius_factor_ = 2.0;
   std::vector<std::vector<double> > parameters;
   std::vector<bool> fixedBlock_;
   ros::NodeHandle nh_;

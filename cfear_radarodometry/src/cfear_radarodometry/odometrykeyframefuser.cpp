@@ -30,6 +30,7 @@ OdometryKeyframeFuser::OdometryKeyframeFuser(const Parameters& pars, bool disabl
                                                                                               par.weight_opt));
 
   radar_reg->SetD2dPar(par.covar_scale_,par.regularization_);
+  radar_reg->SetCoarseRadiusFactor(par.coarse_radius_factor);
 
   Tprev_fused = Eigen::Affine3d::Identity();
   Tcurrent = Eigen::Affine3d::Identity();
@@ -73,12 +74,46 @@ bool OdometryKeyframeFuser::KeyFrameBasedFuse(const Eigen::Affine3d& diff, bool 
 }
 
 
+Eigen::Affine3d OdometryKeyframeFuser::YawSearch(MapNormalPtr& Pcurrent, const Eigen::Affine3d& Tguess){
+  const RadarScan& kf = keyframes_.back();
+  MapNormalPtr Pkf = kf.cloud_normal_;
+  if(Pkf == nullptr || Pkf->GetSize() == 0 || Pcurrent->GetSize() == 0)
+    return Tguess;
+  const Eigen::Affine3d Tkf_inv = kf.GetPose().inverse();
+  const Eigen::MatrixXd means = Pcurrent->GetMeans2d();
+  const double r = par.coarse_radius_factor*par.res; // truncated cost: r^2 without neighbour
+  double best_cost = std::numeric_limits<double>::max(), best_yaw = 0;
+  for(double yaw = -par.yaw_search_deg ; yaw <= par.yaw_search_deg + 1e-9 ; yaw += par.yaw_search_step_deg){
+    const Eigen::Affine3d T = Tkf_inv*Tguess*Eigen::AngleAxisd(yaw*M_PI/180.0, Eigen::Vector3d::UnitZ());
+    double cost = 0;
+    for(Eigen::Index i = 0 ; i < means.cols() ; i++){
+      const Eigen::Vector3d p = T*Eigen::Vector3d(means(0,i), means(1,i), 0);
+      const std::vector<int> idx = Pkf->GetClosestIdx(p.head<2>(), r);
+      cost += idx.empty() ? r*r : (Pkf->GetCell(idx[0]).u_.head<2>() - p.head<2>()).squaredNorm();
+    }
+    if(cost < best_cost){
+      best_cost = cost;
+      best_yaw = yaw;
+    }
+  }
+  CFEAR_Radarodometry::timing.Document("Yaw search offset", best_yaw);
+  return Tguess*Eigen::AngleAxisd(best_yaw*M_PI/180.0, Eigen::Vector3d::UnitZ());
+}
+
 bool OdometryKeyframeFuser::AccelerationVelocitySanityCheck(const Eigen::Affine3d& Tmot_prev, const Eigen::Affine3d& Tmot_curr) {
-  const double dt = 0.25 ; // 4Hz
-  const double vel_limit = 200; // m/s
-  const double acc_limit = 200; // m/s
+  const double dt = par.scan_period;
+  const double vel_limit = par.vel_limit;
+  const double acc_limit = par.acc_limit;
   const double vel = (Tmot_curr.translation()/dt).norm();
   const double acc = ((Tmot_curr.translation() - Tmot_prev.translation())/(dt*dt)).norm();
+  const double yaw_curr = std::atan2(Tmot_curr.linear()(1,0), Tmot_curr.linear()(0,0));
+  const double yaw_prev = std::atan2(Tmot_prev.linear()(1,0), Tmot_prev.linear()(0,0));
+  const double yaw_rate = std::fabs(yaw_curr)/dt*180.0/M_PI;
+  const double yaw_acc = std::fabs(std::remainder(yaw_curr - yaw_prev, 2*M_PI))/(dt*dt)*180.0/M_PI;
+  if(yaw_rate > par.yaw_rate_limit_deg || yaw_acc > par.yaw_acc_limit_deg){
+    cout<<"yaw rate or acceleration exceeds limit: "<<yaw_rate<<" deg/s, "<<yaw_acc<<" deg/s^2"<<endl;
+    return false;
+  }
 
   //cout<<"vel: "<<vel<<", acc: "<<acc<<endl;
   if(acc>acc_limit){
@@ -175,8 +210,11 @@ void OdometryKeyframeFuser::processFrame(pcl::PointCloud<pcl::PointXYZI>::Ptr& c
     AddToReference(keyframes_, scan_, par.submap_scan_size);
     return;
   }
-  else
+  else{
+    if(par.yaw_search_deg > 0)
+      Tguess = YawSearch(Pcurrent, Tguess);
     FormatScans(keyframes_, Pcurrent, Tguess, cov_vek, scans_vek, T_vek);
+  }
 
   //Only for generating plots
 
@@ -228,7 +266,7 @@ void OdometryKeyframeFuser::processFrame(pcl::PointCloud<pcl::PointXYZI>::Ptr& c
   bool fuse = KeyFrameBasedFuse(Tkeydiff, par.use_keyframe, par.min_keyframe_dist_, par.min_keyframe_rot_deg_);
 
 
-  CFEAR_Radarodometry::timing.Document("velocity", Tmot.translation().norm()/Tsensor);
+  CFEAR_Radarodometry::timing.Document("velocity", Tmot.translation().norm()/par.scan_period);
 
 
   if(success && fuse){
