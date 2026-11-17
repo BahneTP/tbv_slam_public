@@ -104,6 +104,10 @@ public:
     // further between scans than the association radius covers (0 = off)
     double yaw_search_deg = 0, yaw_search_step_deg = 1;
     double coarse_radius_factor = 2;                           // first association radius = factor * res
+    // External heading (e.g. gyrocompass), set per scan with SetHeading(). Same meaning as in the maritime ORORA:
+    // heading_prior: rotation between scans = heading change, registration estimates translation only
+    // deskew_with_heading: motion compensation uses the heading change as rotation
+    bool heading_prior = false, deskew_with_heading = false;
     std::string loss_type_ = "Huber";
     double loss_limit_ = 0.1;
     double covar_scale_ = 1.0;
@@ -217,6 +221,8 @@ protected:
   simple_graph graph_;
 
   unsigned int frame_nr_ = 0, nr_callbacks_ = 0;
+  double heading_ = 0, prev_heading_ = 0;
+  bool has_heading_ = false, has_prev_heading_ = false;
   double distance_traveled = 0.0;
 
 
@@ -235,6 +241,8 @@ public:
   //~OdometryKeyframeFuser();
 
   void pointcloudCallback(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud_filtered,  pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud_filtered_peaks,  Eigen::Affine3d &Tcurr, const ros::Time& t);
+
+  void SetHeading(double yaw){ heading_ = yaw; has_heading_ = true; } // yaw [rad], counter-clockwise, for the next scan
 
   void pointcloudCallback(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud_filtered,  pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud_filtered_peaks,  Eigen::Affine3d &Tcurr, const ros::Time& t, Covariance &cov_curr);
 

@@ -16,6 +16,7 @@
 #include <condition_variable>
 #include "ros/time.h"
 #include "eigen_conversions/eigen_msg.h"
+#include "tf/transform_datatypes.h"
 #include "cfear_radarodometry/eval_trajectory.h"
 #include <boost/program_options.hpp>
 #include <iostream>
@@ -75,6 +76,20 @@ public:
     rosbag::Bag bag;
     bag.open(p.bag_file_path, rosbag::bagmode::Read);
 
+    std::map<ros::Time, double> headings; // optional /heading: yaw [rad] per scan stamp
+    if(odom_pars.heading_prior || odom_pars.deskew_with_heading){
+      rosbag::View heading_view(bag, rosbag::TopicQuery(std::vector<std::string>{"/heading"}));
+      foreach(rosbag::MessageInstance const m, heading_view){
+        nav_msgs::Odometry::ConstPtr h = m.instantiate<nav_msgs::Odometry>();
+        if(h != NULL)
+          headings[h->header.stamp] = tf::getYaw(h->pose.pose.orientation);
+      }
+      if(headings.empty()){
+        cerr<<"heading_prior/deskew_with_heading: no /heading messages in "<<p.bag_file_path<<endl;
+        exit(1);
+      }
+    }
+
     std::vector<std::string> topics = {"/Navtech/Polar","/gt"};
     rosbag::View view(bag, rosbag::TopicQuery(topics));
 
@@ -119,6 +134,9 @@ public:
         ros::Time t;
         pcl_conversions::fromPCL(cloud_filtered->header.stamp, t);
 
+        const auto heading = headings.find(image_msg->header.stamp);
+        if(heading != headings.end())
+          fuser.SetHeading(heading->second);
         ros::Time t1 = ros::Time::now();
         fuser.pointcloudCallback(cloud_filtered, cloud_filtered_peaks, Tcurrent, t, cov_current);
         ros::Time t2 = ros::Time::now();
@@ -196,6 +214,8 @@ void ReadOptions(const int argc, char**argv, OdometryKeyframeFuser::Parameters& 
       ("yaw_search", po::value<double>()->default_value(0), "coarse yaw search range [+-deg], 0 = off")
       ("yaw_search_step", po::value<double>()->default_value(1), "coarse yaw search step [deg]")
       ("coarse_radius_factor", po::value<double>()->default_value(2), "first association radius / res")
+      ("heading_prior", po::value<bool>()->default_value(false), "rotation between scans from /heading, estimate translation only")
+      ("deskew_with_heading", po::value<bool>()->default_value(false), "motion compensation with the rotation from /heading")
       ("range-res", po::value<double>()->default_value(0.0438), "range resolution")
       ("min_distance", po::value<double>()->default_value(2.5), "min sensor distance")
       ("max_distance", po::value<double>()->default_value(200), "mib sensor distance ")
@@ -351,6 +371,8 @@ void ReadOptions(const int argc, char**argv, OdometryKeyframeFuser::Parameters& 
   par.yaw_search_deg = vm["yaw_search"].as<double>();
   par.yaw_search_step_deg = vm["yaw_search_step"].as<double>();
   par.coarse_radius_factor = vm["coarse_radius_factor"].as<double>();
+  par.heading_prior = vm["heading_prior"].as<bool>();
+  par.deskew_with_heading = vm["deskew_with_heading"].as<bool>();
   par.soft_constraint = false; // soft constraint is rarely useful, this is changed for testing of initi // vm["soft_constraint"].as<bool>();
   par.radar_ccw = vm["radar_ccw"].as<bool>();
 

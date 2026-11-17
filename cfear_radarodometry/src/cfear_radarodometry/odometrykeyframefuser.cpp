@@ -178,7 +178,16 @@ pcl::PointCloud<pcl::PointXYZI> OdometryKeyframeFuser::FormatScanMsg(pcl::PointC
 void OdometryKeyframeFuser::processFrame(pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud, pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud_peaks, const ros::Time& t) {
 
   ros::Time t0 = ros::Time::now();
+  const bool have_heading = has_heading_ && has_prev_heading_;
+  const Eigen::Matrix3d Rheading(Eigen::AngleAxisd(have_heading ? std::remainder(heading_ - prev_heading_, 2*M_PI) : 0.0,
+                                                   Eigen::Vector3d::UnitZ()));
+  prev_heading_ = heading_;
+  has_prev_heading_ = has_heading_;
+  has_heading_ = false;
+
   Eigen::Affine3d TprevMot(Tmot);
+  if(par.deskew_with_heading && have_heading)
+    TprevMot.linear() = Rheading;
   if(par.compensate){
     Compensate(*cloud, TprevMot, par.radar_ccw);
     Compensate(*cloud_peaks, TprevMot, par.radar_ccw);
@@ -201,6 +210,10 @@ void OdometryKeyframeFuser::processFrame(pcl::PointCloud<pcl::PointXYZI>::Ptr& c
     Tguess = T_prev*TprevMot;
   else
     Tguess = T_prev;
+  const bool fix_yaw = par.heading_prior && have_heading;
+  if(fix_yaw)
+    Tguess.linear() = T_prev.linear()*Rheading;
+  radar_reg->SetFixYaw(fix_yaw);
 
 
   if(keyframes_.empty()){
@@ -211,7 +224,7 @@ void OdometryKeyframeFuser::processFrame(pcl::PointCloud<pcl::PointXYZI>::Ptr& c
     return;
   }
   else{
-    if(par.yaw_search_deg > 0)
+    if(par.yaw_search_deg > 0 && !fix_yaw)
       Tguess = YawSearch(Pcurrent, Tguess);
     FormatScans(keyframes_, Pcurrent, Tguess, cov_vek, scans_vek, T_vek);
   }

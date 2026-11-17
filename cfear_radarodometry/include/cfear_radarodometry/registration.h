@@ -73,6 +73,8 @@ public:
 
   void SetCoarseRadiusFactor(double factor){ coarse_radius_factor_ = factor; }
 
+  void SetFixYaw(bool fix){ fix_yaw_ = fix; } // keep the yaw of the initial guess, estimate translation only
+
   Registration();
 
   virtual bool Register(std::vector<MapNormalPtr>& scans, std::vector<Eigen::Affine3d>& Tsrc, std::vector<Matrix6d>& reg_cov, bool soft_constraints = false)=0;
@@ -123,6 +125,7 @@ protected:
   std::vector<MapNormalPtr> scans_; // 0 = target, 1 = source
   double radius_ = 2.0;
   double coarse_radius_factor_ = 2.0;
+  bool fix_yaw_ = false;
   std::vector<std::vector<double> > parameters;
   std::vector<bool> fixedBlock_;
   ros::NodeHandle nh_;

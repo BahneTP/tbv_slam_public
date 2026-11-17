@@ -385,6 +385,11 @@ bool n_scan_normal_reg:: BuildOptimizationProblem(std::vector<MapNormalPtr>& sca
     cerr<<"Fixed Block size error"<<endl;
     exit(0);
   }
+  if(fix_yaw_){
+    for(size_t i=0 ; i<parameters.size() ; i++)
+      if(!problem_->IsParameterBlockConstant(parameters[i].data()))
+        problem_->SetManifold(parameters[i].data(), new ceres::SubsetManifold(3, {2}));
+  }
   return true;
 }
 bool n_scan_normal_reg::GetCovariance(Matrix6d &Cov){
